@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Globalization;
-using System.Text.Json;
 
 namespace core
 {
@@ -12,17 +11,20 @@ namespace core
         public int? TrueStartTime { get; private set; }
         public int? TrueEndTime { get; private set; }
 
-        public static Time Create(JsonElement element)
+        public static Time Create(string startTime, string endTime, string trueStartTime, string trueEndTime)
         {
-            static int? GetHour(JsonElement hour) =>
-                hour.ValueKind == JsonValueKind.Null ? (int?)null : DateTime.ParseExact(hour.GetString(), "HH:mm:ss", CultureInfo.InvariantCulture).Hour;
+            if (string.IsNullOrWhiteSpace(startTime)) throw new ArgumentException(nameof(startTime));
+            if (string.IsNullOrWhiteSpace(endTime)) throw new ArgumentException(nameof(endTime));
+
+            static int? GetHour(string hour) =>
+                hour == null ? (int?)null : DateTime.ParseExact(hour, "HH:mm:ss", CultureInfo.InvariantCulture).Hour;
 
             return new Time
             {
-                StartTime = GetHour(element.GetProperty("StartTime")).Value,
-                EndTime = GetHour(element.GetProperty("EndTime")).Value,
-                TrueStartTime = GetHour(element.GetProperty("TrueStartTime")),
-                TrueEndTime = GetHour(element.GetProperty("TrueEndTime"))
+                StartTime = GetHour(startTime).Value,
+                EndTime = GetHour(endTime).Value,
+                TrueStartTime = GetHour(trueStartTime),
+                TrueEndTime = GetHour(trueEndTime)
             };
         }
 

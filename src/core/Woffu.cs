@@ -56,7 +56,12 @@ namespace core
             var today = diaries[0];
             if (today.GetProperty("IsHoliday").GetBoolean() || today.GetProperty("IsWeekend").GetBoolean()) return null;
 
-            return Time.Create(today);
+            var startTime = today.GetProperty("StartTime").GetString() ?? throw new InvalidOperationException("StartTime");
+            var endTime = today.GetProperty("EndTime").GetString() ?? throw new InvalidOperationException("EndTime");
+            var trueStartTime = today.GetProperty("TrueStartTime").GetString();
+            var trueEndTime = today.GetProperty("TrueEndTime").GetString();
+
+            return Time.Create(startTime, endTime, trueStartTime, trueEndTime);
         }
 
         async Task<bool> DoSignAsync(HttpClient httpClient, int userId, Time times)
