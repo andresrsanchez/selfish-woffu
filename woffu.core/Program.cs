@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
@@ -35,11 +36,12 @@ namespace woffu.core
             var httpClient = await GetClientAsync(user, password);
             var userId = await GetUserIdAsync(httpClient);
             var times = await GetTimesToSignAsync(httpClient, userId);
-            if (times == null)
+            if (times == null || times.TrueEndTime.HasValue)
             {
                 return;
             }
-         
+            
+            await DoSignAsync(httpClient, times);
 
         }
 
@@ -67,7 +69,7 @@ namespace woffu.core
             return response.GetProperty("UserId").GetInt32();
         }
 
-        async Task<Times> GetTimesToSignAsync(HttpClient httpClient, int userId)
+        async Task<Time> GetTimesToSignAsync(HttpClient httpClient, int userId)
         {
             var date = DateTime.Now.ToString("yyyy-MM-dd");
             var result = await httpClient.GetAsync($"https://app.woffu.com/api/users/{userId}/diaries/presence?fromDate={date}&pageIndex=0&pageSize=1&toDate={date}");
@@ -86,34 +88,29 @@ namespace woffu.core
                 return null;
             }
 
-            return Times.Create(diary);
+            return Time.Create(diary);
         }
 
-        async Task Sign(HttpClient httpClient, string userId)
+        async Task DoSignAsync(HttpClient httpClient, Time times)
         {
-            var result = await httpClient.GetAsync("https://app.woffu.com/api/signs");
-            using var stream = await result.Content.ReadAsStreamAsync();
-            var jsonElement = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
 
-            var length = jsonElement.GetArrayLength();
-            if (length > 1)
+            if (!times.TrueStartTime.HasValue)
             {
-                throw new Exception("Cannot sign more in/outs");
-            }
-            else if (length == 0)
-            {
-                //in
-                return;
+
             }
 
-            //out
-            var date = jsonElement[0].GetProperty("Date").GetDateTime();
+            var dictionary = new Dictionary<string, object>
+            {
+                { "UserId", 1 },
+                { "Date", 1 },
+                { "TimezoneOffset", TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).Hours }
+            };
 
-            
+
         }
     }
 
-    public class Times
+    public class Time
     {
         public int StartTime { get; private set; }
         public int EndTime { get; private set; }
@@ -121,18 +118,23 @@ namespace woffu.core
         public int? TrueEndTime { get; private set; }
 
         //no bugs checking :)
-        public static Times Create(JsonElement element)
+        public static Time Create(JsonElement element)
         {
             static int? GetHour(JsonElement hour) => 
                 hour.ValueKind == JsonValueKind.Null ? (int?)null : DateTime.ParseExact(hour.GetString(), "HH:mm:ss", CultureInfo.InvariantCulture).Hour;
 
-            return new Times
+            return new Time
             {
                 StartTime = GetHour(element.GetProperty("StartTime")).Value,
                 EndTime = GetHour(element.GetProperty("EndTime")).Value,
                 TrueStartTime = GetHour(element.GetProperty("TrueStartTime")),
                 TrueEndTime = GetHour(element.GetProperty("TrueEndTime"))
             };
+        }
+
+        DateTime GetDateToSign()
+        {
+
         }
     }
 }
