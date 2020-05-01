@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
@@ -32,8 +33,15 @@ namespace woffu.core
     {
         public async Task LoginAsync(string user, string password)
         {
-            var client = await GetClient(user, password);
-            await SignAsync(client, null, null);
+            var httpClient = await GetClient(user, password);
+
+            var result = await httpClient.GetAsync($"https://app.woffu.com/api/users/");
+            using var stream = await result.Content.ReadAsStreamAsync();
+            var response = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
+
+            var userId = response.GetProperty("UserId").GetInt32();
+
+            await SignAsync(httpClient, userId);
 
          
         }
@@ -45,18 +53,18 @@ namespace woffu.core
 
             var result = await httpClient.PostAsync("https://app.woffu.com/token", content);
             using var stream = await result.Content.ReadAsStreamAsync();
-            var response = await JsonSerializer.DeserializeAsync<Dictionary<string, JsonElement>>(stream);
-            var jwtEncodedString = response["access_token"];
+            var response = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
 
             httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {jwtEncodedString}");
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer { response.GetProperty("access_token").GetString()}");
 
             return httpClient;
         }
 
-        async Task SignAsync(HttpClient httpClient, string userId, string companyId)
+        async Task SignAsync(HttpClient httpClient, int userId)
         {
-            var result = await httpClient.GetAsync($"https://app.woffu.com/api/users/{userId}/diaries/presence?fromDate=2020-05-01&pageIndex=0&pageSize=1&toDate=2020-05-01");
+            var date = DateTime.Now.ToString("yyyy-MM-dd");
+            var result = await httpClient.GetAsync($"https://app.woffu.com/api/users/{userId}/diaries/presence?fromDate={date}&pageIndex=0&pageSize=1&toDate={date}");
             using var stream = await result.Content.ReadAsStreamAsync();
             var response = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
             var diaries = response.GetProperty("Diaries");
@@ -67,16 +75,16 @@ namespace woffu.core
             }
 
             var diary = diaries[0];
-            if (diary.GetProperty("isHoliday").GetBoolean() || diary.GetProperty("isWeekend").GetBoolean())
+            if (diary.GetProperty("IsHoliday").GetBoolean() || diary.GetProperty("IsWeekend").GetBoolean())
             {
                 return;
             }
 
+            var times = Times.Create(diary);
+
             var startTime = diary.GetProperty("StartTime");
             var endTime = diary.GetProperty("EndTime");
         }
-
-
 
         async Task Sign(HttpClient httpClient, string userId)
         {
@@ -99,6 +107,29 @@ namespace woffu.core
             var date = jsonElement[0].GetProperty("Date").GetDateTime();
 
             
+        }
+    }
+
+    public class Times
+    {
+        public int StartTime { get; private set; }
+        public int EndTime { get; private set; }
+        public int? TrueStartTime { get; private set; }
+        public int? TrueEndTime { get; private set; }
+
+        //no bugs checking :)
+        public static Times Create(JsonElement element)
+        {
+            static int? GetHour(JsonElement hour) => 
+                hour.ValueKind == JsonValueKind.Null ? (int?)null : DateTime.ParseExact(hour.GetString(), "HH:mm:ss", CultureInfo.InvariantCulture).Hour;
+
+            return new Times
+            {
+                StartTime = GetHour(element.GetProperty("StartTime")).Value,
+                EndTime = GetHour(element.GetProperty("EndTime")).Value,
+                TrueStartTime = GetHour(element.GetProperty("TrueStartTime")),
+                TrueEndTime = GetHour(element.GetProperty("TrueEndTime"))
+            };
         }
     }
 }
