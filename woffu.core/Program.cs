@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -36,12 +37,10 @@ namespace woffu.core
             var httpClient = await GetClientAsync(user, password);
             var userId = await GetUserIdAsync(httpClient);
             var times = await GetTimesToSignAsync(httpClient, userId);
-            if (times == null || times.TrueEndTime.HasValue)
-            {
-                return;
-            }
+
+            //if (times == null || times.TrueEndTime.HasValue) return;
             
-            await DoSignAsync(httpClient, times);
+            await DoSignAsync(httpClient, userId, times);
 
         }
 
@@ -82,31 +81,23 @@ namespace woffu.core
                 throw new Exception();
             }
 
-            var diary = diaries[0];
-            if (diary.GetProperty("IsHoliday").GetBoolean() || diary.GetProperty("IsWeekend").GetBoolean())
-            {
-                return null;
-            }
+            var today = diaries[0];
+            //if (today.GetProperty("IsHoliday").GetBoolean() || today.GetProperty("IsWeekend").GetBoolean()) return null;
 
-            return Time.Create(diary);
+            return Time.Create(today);
         }
 
-        async Task DoSignAsync(HttpClient httpClient, Time times)
+        async Task DoSignAsync(HttpClient httpClient, int userId, Time times)
         {
-
-            if (!times.TrueStartTime.HasValue)
-            {
-
-            }
-
-            var dictionary = new Dictionary<string, object>
-            {
-                { "UserId", 1 },
-                { "Date", 1 },
-                { "TimezoneOffset", TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).Hours }
-            };
-
-
+            var json = $@"
+{{
+    ""UserId"": ""{userId}"",
+    ""Date"": ""{times.GetDateToSign()}"",
+    ""TimezoneOffset"": {TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).Hours}
+}}
+";
+            var result = await httpClient.PostAsync("https://app.woffu.com/api/signs", new StringContent(json, Encoding.UTF8, "application/json"));
+            
         }
     }
 
@@ -132,9 +123,13 @@ namespace woffu.core
             };
         }
 
-        DateTime GetDateToSign()
+        public DateTime GetDateToSign()
         {
+            //if (TrueStartTime.HasValue && TrueEndTime.HasValue) throw new InvalidOperationException();
+            var hour = TrueStartTime.HasValue ? EndTime : StartTime;
 
+            var now = DateTime.Now;
+            return new DateTime(now.Year, now.Month, now.Day, hour, now.Minute, now.Second);
         }
     }
 }
