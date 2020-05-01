@@ -38,7 +38,7 @@ namespace woffu.core
             var userId = await GetUserIdAsync(httpClient);
             var times = await GetTimesToSignAsync(httpClient, userId);
 
-            //if (times == null || times.TrueEndTime.HasValue) return;
+            if (times == null || times.TrueEndTime.HasValue) return;
             
             await DoSignAsync(httpClient, userId, times);
 
@@ -82,7 +82,7 @@ namespace woffu.core
             }
 
             var today = diaries[0];
-            //if (today.GetProperty("IsHoliday").GetBoolean() || today.GetProperty("IsWeekend").GetBoolean()) return null;
+            if (today.GetProperty("IsHoliday").GetBoolean() || today.GetProperty("IsWeekend").GetBoolean()) return null;
 
             return Time.Create(today);
         }
@@ -108,7 +108,7 @@ namespace woffu.core
         public int? TrueStartTime { get; private set; }
         public int? TrueEndTime { get; private set; }
 
-        //no bugs checking :)
+        //no control errors :)
         public static Time Create(JsonElement element)
         {
             static int? GetHour(JsonElement hour) => 
@@ -125,7 +125,7 @@ namespace woffu.core
 
         public DateTime GetDateToSign()
         {
-            //if (TrueStartTime.HasValue && TrueEndTime.HasValue) throw new InvalidOperationException();
+            if (TrueStartTime.HasValue && TrueEndTime.HasValue) throw new InvalidOperationException();
             var hour = TrueStartTime.HasValue ? EndTime : StartTime;
 
             var now = DateTime.Now;
