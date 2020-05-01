@@ -2,10 +2,11 @@
 using System.Globalization;
 using System.Text.Json;
 
-namespace selfish
+namespace core
 {
     internal class Time
     {
+        private Time() { }
         public int StartTime { get; private set; }
         public int EndTime { get; private set; }
         public int? TrueStartTime { get; private set; }

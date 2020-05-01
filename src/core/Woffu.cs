@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace selfish
+namespace core
 {
     public class Woffu
     {
