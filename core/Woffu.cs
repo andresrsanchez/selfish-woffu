@@ -1,47 +1,22 @@
-﻿using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
+﻿using System;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace woffu.core
+namespace selfish
 {
-    class Program
-    {
-        static async Task Main(string[] args)
-        {
-            var woffu = new Woffu();
-
-            var conf = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddUserSecrets<Program>()
-                .AddEnvironmentVariables()
-                .Build();
-
-            var user = conf.GetValue<string>("User");
-            var password = conf.GetValue<string>("Password");
-
-            await woffu.TryToSignAsync(user, password);
-            
-        }
-    }
-
     public class Woffu
     {
-        public async Task TryToSignAsync(string user, string password)
+        public async Task<bool> TryToSignTodayAsync(string user, string password)
         {
             var httpClient = await GetClientAsync(user, password);
             var userId = await GetUserIdAsync(httpClient);
             var times = await GetTimesToSignAsync(httpClient, userId);
 
-            if (times == null || times.TrueEndTime.HasValue) return;
-            
-            await DoSignAsync(httpClient, userId, times);
+            if (times == null || times.TrueEndTime.HasValue) return false;
 
+            return await DoSignAsync(httpClient, userId, times);
         }
 
         async Task<HttpClient> GetClientAsync(string user, string password)
@@ -76,10 +51,7 @@ namespace woffu.core
             var response = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
             var diaries = response.GetProperty("Diaries");
 
-            if (diaries.ValueKind != JsonValueKind.Array || diaries.GetArrayLength() != 1)
-            {
-                throw new Exception();
-            }
+            if (diaries.ValueKind != JsonValueKind.Array || diaries.GetArrayLength() != 1) throw new Exception();
 
             var today = diaries[0];
             if (today.GetProperty("IsHoliday").GetBoolean() || today.GetProperty("IsWeekend").GetBoolean()) return null;
@@ -87,7 +59,7 @@ namespace woffu.core
             return Time.Create(today);
         }
 
-        async Task DoSignAsync(HttpClient httpClient, int userId, Time times)
+        async Task<bool> DoSignAsync(HttpClient httpClient, int userId, Time times)
         {
             var json = $@"
 {{
@@ -97,39 +69,8 @@ namespace woffu.core
 }}
 ";
             var result = await httpClient.PostAsync("https://app.woffu.com/api/signs", new StringContent(json, Encoding.UTF8, "application/json"));
-            
-        }
-    }
-
-    public class Time
-    {
-        public int StartTime { get; private set; }
-        public int EndTime { get; private set; }
-        public int? TrueStartTime { get; private set; }
-        public int? TrueEndTime { get; private set; }
-
-        //no control errors :)
-        public static Time Create(JsonElement element)
-        {
-            static int? GetHour(JsonElement hour) => 
-                hour.ValueKind == JsonValueKind.Null ? (int?)null : DateTime.ParseExact(hour.GetString(), "HH:mm:ss", CultureInfo.InvariantCulture).Hour;
-
-            return new Time
-            {
-                StartTime = GetHour(element.GetProperty("StartTime")).Value,
-                EndTime = GetHour(element.GetProperty("EndTime")).Value,
-                TrueStartTime = GetHour(element.GetProperty("TrueStartTime")),
-                TrueEndTime = GetHour(element.GetProperty("TrueEndTime"))
-            };
+            return result.IsSuccessStatusCode;
         }
 
-        public DateTime GetDateToSign()
-        {
-            if (TrueStartTime.HasValue && TrueEndTime.HasValue) throw new InvalidOperationException();
-            var hour = TrueStartTime.HasValue ? EndTime : StartTime;
-
-            var now = DateTime.Now;
-            return new DateTime(now.Year, now.Month, now.Day, hour, now.Minute, now.Second);
-        }
     }
 }
