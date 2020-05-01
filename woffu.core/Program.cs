@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
@@ -24,29 +23,27 @@ namespace woffu.core
             var user = conf.GetValue<string>("User");
             var password = conf.GetValue<string>("Password");
 
-            await woffu.LoginAsync(user, password);
+            await woffu.TryToSignAsync(user, password);
             
         }
     }
 
     public class Woffu
     {
-        public async Task LoginAsync(string user, string password)
+        public async Task TryToSignAsync(string user, string password)
         {
-            var httpClient = await GetClient(user, password);
-
-            var result = await httpClient.GetAsync($"https://app.woffu.com/api/users/");
-            using var stream = await result.Content.ReadAsStreamAsync();
-            var response = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
-
-            var userId = response.GetProperty("UserId").GetInt32();
-
-            await SignAsync(httpClient, userId);
-
+            var httpClient = await GetClientAsync(user, password);
+            var userId = await GetUserIdAsync(httpClient);
+            var times = await GetTimesToSignAsync(httpClient, userId);
+            if (times == null)
+            {
+                return;
+            }
          
+
         }
 
-        async Task<HttpClient> GetClient(string user, string password)
+        async Task<HttpClient> GetClientAsync(string user, string password)
         {
             var content = new StringContent($"grant_type=password&username={user}&password={password}");
             var httpClient = new HttpClient();
@@ -61,7 +58,16 @@ namespace woffu.core
             return httpClient;
         }
 
-        async Task SignAsync(HttpClient httpClient, int userId)
+        async Task<int> GetUserIdAsync(HttpClient httpClient)
+        {
+            var result = await httpClient.GetAsync($"https://app.woffu.com/api/users/");
+            using var stream = await result.Content.ReadAsStreamAsync();
+            var response = await JsonSerializer.DeserializeAsync<JsonElement>(stream);
+
+            return response.GetProperty("UserId").GetInt32();
+        }
+
+        async Task<Times> GetTimesToSignAsync(HttpClient httpClient, int userId)
         {
             var date = DateTime.Now.ToString("yyyy-MM-dd");
             var result = await httpClient.GetAsync($"https://app.woffu.com/api/users/{userId}/diaries/presence?fromDate={date}&pageIndex=0&pageSize=1&toDate={date}");
@@ -77,13 +83,10 @@ namespace woffu.core
             var diary = diaries[0];
             if (diary.GetProperty("IsHoliday").GetBoolean() || diary.GetProperty("IsWeekend").GetBoolean())
             {
-                return;
+                return null;
             }
 
-            var times = Times.Create(diary);
-
-            var startTime = diary.GetProperty("StartTime");
-            var endTime = diary.GetProperty("EndTime");
+            return Times.Create(diary);
         }
 
         async Task Sign(HttpClient httpClient, string userId)
