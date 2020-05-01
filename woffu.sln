@@ -7,6 +7,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "woffu.core", "src\core\woff
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "woffu.core.tests", "tests\woffu.core.tests\woffu.core.tests.csproj", "{D3434B67-E6BE-46E8-9B89-6C4FE9164044}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{36C54BC6-7BF0-4BE4-AC50-2C656C4F544C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "woffu-function", "samples\woffu-function\woffu-function.csproj", "{49BAAF64-EF90-46FB-A679-02E0F869BE3C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,11 +25,18 @@ Global
 		{D3434B67-E6BE-46E8-9B89-6C4FE9164044}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D3434B67-E6BE-46E8-9B89-6C4FE9164044}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D3434B67-E6BE-46E8-9B89-6C4FE9164044}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49BAAF64-EF90-46FB-A679-02E0F869BE3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49BAAF64-EF90-46FB-A679-02E0F869BE3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49BAAF64-EF90-46FB-A679-02E0F869BE3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49BAAF64-EF90-46FB-A679-02E0F869BE3C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {82EF7282-77D0-48D5-A3C5-1B92CA18EC57}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{49BAAF64-EF90-46FB-A679-02E0F869BE3C} = {36C54BC6-7BF0-4BE4-AC50-2C656C4F544C}
 	EndGlobalSection
 EndGlobal
