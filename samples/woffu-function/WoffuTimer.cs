@@ -1,16 +1,27 @@
-using System;
+using core;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace woffu_function
 {
-    public static class WoffuTimer
+    public class WoffuTimer
     {
-        [FunctionName("WoffuTimer")]
-        public static void Run([TimerTrigger("0 */5 * * * *")]TimerInfo myTimer, ILogger log)
+        private readonly IConfiguration _configuration;
+
+        public WoffuTimer(IConfiguration configuration)
         {
-            log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
+            _configuration = configuration;
+        }
+
+        [FunctionName("WoffuTimer")]
+        public async Task Run([TimerTrigger("0 */1 * * * *")]TimerInfo myTimer, ILogger log)
+        {
+            var user = _configuration.GetValue<string>("User");
+            var password = _configuration.GetValue<string>("Password");
+            var woffu = new Woffu();
+            await woffu.TryToSignTodayAsync(user, password);
         }
     }
 }
