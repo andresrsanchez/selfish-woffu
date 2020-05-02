@@ -15,4 +15,7 @@ jobs:
     - name: Build
       run: dotnet build -c Release
       working-directory: ./
+    - name: Test
+      run: dotnet test --no-build -c Release
+      working-directory: ./
     
