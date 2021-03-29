@@ -8,9 +8,18 @@ namespace core
 {
     public class Woffu
     {
-        public async Task<bool> TryToSignTodayAsync(string user, string password)
+        private readonly string _user;
+        private readonly string _password;
+
+        public Woffu(string user, string password)
         {
-            var httpClient = await GetClientAsync(user, password);
+            _user = user;
+            _password = password;
+        }
+
+        public async Task<bool> TryToSignTodayAsync()
+        {
+            var httpClient = await GetClientAsync(_user, _password);
             var userId = await GetUserIdAsync(httpClient);
             var times = await GetTimesToSignAsync(httpClient, userId);
 
