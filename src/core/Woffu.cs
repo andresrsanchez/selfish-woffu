@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -6,24 +7,33 @@ using System.Threading.Tasks;
 
 namespace core
 {
+    public record WoffuOptions(string User, string Password);
+
     public class Woffu
     {
-        private readonly string _user;
-        private readonly string _password;
+        private readonly ILogger<Woffu> _logger;
+        private readonly WoffuOptions _woffuOptions;
 
-        public Woffu(string user, string password)
+        public Woffu(ILogger<Woffu> logger, WoffuOptions woffuOptions)
         {
-            _user = user;
-            _password = password;
+            _logger = logger;
+            _woffuOptions = woffuOptions;
         }
 
         public async Task<bool> TryToSignTodayAsync()
         {
-            var httpClient = await GetClientAsync(_user, _password);
+            _logger.LogInformation($"Trying to sign today as user: {_woffuOptions.User}");
+
+            var httpClient = await GetClientAsync(_woffuOptions.User, _woffuOptions.Password);
             var userId = await GetUserIdAsync(httpClient);
+
+            _logger.LogInformation($"The userId is : {userId} for user: {_woffuOptions.User}");
+
             var times = await GetTimesToSignAsync(httpClient, userId);
 
             if (times == null || times.TrueEndTime.HasValue) return false;
+
+            _logger.LogInformation($"TrueStartTime: {times.TrueStartTime} TrueEndTime: {times.TrueEndTime}");
 
             return await DoSignAsync(httpClient, userId, times);
         }
@@ -82,6 +92,8 @@ namespace core
     ""TimezoneOffset"": {TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).Hours}
 }}
 ";
+            _logger.LogInformation($"Trying to sign with data: {json}");
+
             var result = await httpClient.PostAsync("https://app.woffu.com/api/signs", new StringContent(json, Encoding.UTF8, "application/json"));
             return result.IsSuccessStatusCode;
         }

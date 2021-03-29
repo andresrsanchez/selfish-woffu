@@ -30,8 +30,8 @@ namespace woffu.worker
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services.AddTransient(X => new Woffu(
-                        hostContext.Configuration["WoffuUser"], hostContext.Configuration["WoffuPassword"]));
+                    services.AddSingleton(x => new WoffuOptions(hostContext.Configuration["WoffuUser"], hostContext.Configuration["WoffuPassword"]));
+                    services.AddTransient<Woffu>();
                     services
                         .AddQuartz(q =>
                         {
@@ -45,10 +45,10 @@ namespace woffu.worker
                                 .ForJob(jobKey)
                                 .WithIdentity($"{job}-morning-trigger")
                                 .WithCronSchedule(hostContext.Configuration["QuartzMorning"]));
-                            //q.AddTrigger(opts => opts
-                            //    .ForJob(jobKey)
-                            //    .WithIdentity($"{job}-afternoon-trigger")
-                            //    .WithCronSchedule(hostContext.Configuration["QuartzAfternoon"]));
+                            q.AddTrigger(opts => opts
+                                .ForJob(jobKey)
+                                .WithIdentity($"{job}-afternoon-trigger")
+                                .WithCronSchedule(hostContext.Configuration["QuartzAfternoon"]));
 
                         }).AddQuartzHostedService(x => x.WaitForJobsToComplete = true);
                 });
